@@ -15,6 +15,8 @@ except Exception as e:
     print("Error accessing serving_default signature: ", str(e))
 
 # tf.saved_model.save(old_model, 'new_model_test')
+
+
 def generateFingerprints(no=1):
     random_latent_vectors = tf.random.normal(shape=(no, 128))
     testImages = old_model(random_latent_vectors)
@@ -25,10 +27,8 @@ def generateFingerprints(no=1):
 
 
 def devFingerprintGen():
-    prints = generateFingerprints(9)
+    prints = generateFingerprints(5)
     print(prints.shape)
-
-    fir = plt.figure(figsize=(3, 3))
 
     for i in range(prints.shape[0]):
         plt.subplot(3, 3, i+1)
@@ -37,4 +37,5 @@ def devFingerprintGen():
     plt.show()
 
 
-devFingerprintGen()
+if __name__ == "__main__":
+    devFingerprintGen()
