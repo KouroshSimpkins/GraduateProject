@@ -19,7 +19,7 @@ def gen_fingerprints():
 
 @app.route("/fingerprint_gen_api", methods=['GET'])
 def fingerprint_gen_api():
-    prints = fpGAN.generateFingerprints(5)
+    prints = fpGAN.generateFingerprints(1)
     return jsonify(prints.tolist())
 
 
