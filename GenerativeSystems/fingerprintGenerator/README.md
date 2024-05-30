@@ -1,8 +1,8 @@
 # The Fingerprint Generator
 
 This fingerprint generator is based on a piece of work
-created by William Westwood, called "Do You Exist". I've had to reverse engineer
-the tensorflow requirements, as there have been some major changes, although it preserves
+created by William Westwood, called [Do You Exist](https://github.com/iwouldntbother/DoYouExist). 
+I've had to reverse engineer the tensorflow requirements, as there have been some major changes, although it preserves
 his original GAN work. I've simply packaged the generator in a docker container
 so that it can be run separately from the rest of the systems on an older version of Python.
 
