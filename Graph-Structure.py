@@ -45,15 +45,21 @@ def add_random_connections(person_id, num_connections=3):
 
 
 if __name__ == "__main__":
-    for _ in range(10):
+    for _ in range(100):
         new_person_id = add_person()
         add_random_connections(new_person_id)
+
+    plt.figure(figsize=(45, 30))
 
     print(G.nodes.data())
     print(G.edges.data())
 
+    node_labels = nx.get_node_attributes(G, 'name')
+    edge_labels = nx.get_edge_attributes(G,'relationship')
+
     pos = nx.spring_layout(G)
     nx.draw_networkx_nodes(G, pos, node_size=700)
     nx.draw_networkx_edges(G, pos, edgelist=G.edges(data=True), edge_color='black')
-    nx.draw_networkx_labels(G, pos, font_size=12, font_family='sans-serif')
+    nx.draw_networkx_labels(G, pos, font_size=12, font_family='sans-serif', labels=node_labels)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
     plt.show()
