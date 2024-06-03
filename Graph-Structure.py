@@ -2,7 +2,7 @@ import networkx as nx
 from faker import Faker
 import matplotlib.pyplot as plt
 
-fake = Faker()
+fake = Faker('en_GB')
 
 G = nx.DiGraph()
 
@@ -45,7 +45,7 @@ def add_random_connections(person_id, num_connections=3):
 
 
 if __name__ == "__main__":
-    for _ in range(100):
+    for _ in range(25):
         new_person_id = add_person()
         add_random_connections(new_person_id)
 
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     print(G.edges.data())
 
     node_labels = nx.get_node_attributes(G, 'name')
-    edge_labels = nx.get_edge_attributes(G,'relationship')
+    edge_labels = nx.get_edge_attributes(G, 'relationship')
 
     pos = nx.spring_layout(G)
     nx.draw_networkx_nodes(G, pos, node_size=700)
