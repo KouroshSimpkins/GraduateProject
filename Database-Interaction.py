@@ -1,9 +1,11 @@
 import psycopg2
 import random
+import requests
 from faker import Faker
 import datetime
 import os
 from dotenv import load_dotenv
+from networkx.algorithms.components import connected
 
 fake = Faker('en_GB')
 
@@ -162,7 +164,40 @@ def insert_drivers_license(person_id):
     conn.close()
 
 
+def insert_fingerprints(person_id, finger_name, fingerprint_data):
+    conn = connect_to_db()
+    cur = conn.cursor()
+
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+        INSERT INTO test_identity_system.fingerprints (person_id, finger_name, fingerprint_data)
+        VALUES (%s, %s, %s);
+        """, (person_id, finger_name, psycopg2.Binary(fingerprint_data)))
+        conn.commit()
+    except psycopg2.DatabaseError as e:
+        print(f"Error inserting fingerprint data: {e}")
+        conn.rollback()
+    finally:
+        if conn is not connected:
+            conn.close()
+
+
+def get_fingerprint_data(api_url):
+    response = requests.get(api_url)
+    if response.status_code == 200:
+        return response.content
+    else:
+        print("Failed to retrieve data")
+        return None
+
+
 def main():
+    # !TODO: Hardcode tailscale IP address (for showcase)
+    api_url = "http://127.0.0.1:4999/fingerprint_gen_api"
+    finger_names = ['Right Thumb', 'Right Index', 'Right Middle', 'Right Ring', 'Right Little', 'Left Thumb',
+                    'Left Index', 'Left Middle', 'Left Ring', 'Left Little']
+
     person_data = generate_person_data()
     uuid = insert_person(person_data)
 
@@ -172,6 +207,10 @@ def main():
 
     cur.execute("SELECT person_id FROM Persons WHERE uuid = %s;", (uuid,))
     person_id = cur.fetchone()[0]
+
+    for finger_name in finger_names:
+        fingerprint_data = get_fingerprint_data(api_url)
+        insert_fingerprints(person_id, finger_name, fingerprint_data)
 
     cur.close()
 
