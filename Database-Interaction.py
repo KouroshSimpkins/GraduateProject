@@ -21,14 +21,15 @@ def generate_email(first_name, last_name, date_of_birth):
     current_year = datetime.datetime.now().year
     age = current_year - date_of_birth.year
 
-    if age < 25:
+    if age < 28:
         patterns = [
             "{first}{last}{random_digits}@{domain}",
             "{random_chars}@{domain}",
             "{first}.{last}@{domain}",
             "{first}{last}@{domain}",
             "{first}.{last}{random_digits}@{domain}",
-            "{first}{last}{year}@{domain}"
+            "{first}{last}{year}@{domain}",
+            "{first}{last}{random_chars}@{domain}"
         ]
     else:
         patterns = [
@@ -55,6 +56,7 @@ def generate_email(first_name, last_name, date_of_birth):
 
 load_dotenv()
 
+# !TODO: Tidy up environment variable locations.
 db_name = os.getenv('DB_NAME')
 db_user = os.getenv('DB_USER')
 db_password = os.getenv('DB_PASSWORD')
@@ -100,6 +102,7 @@ def insert_person(person_data):
     connection = connect_to_db()
     cursor = connection.cursor()
 
+    # !TODO: Remove the below line of code when switching to next test database.
     cursor.execute("SET search_path = 'test_identity_system';")
 
     cursor.execute("INSERT INTO persons (first_name, last_name, email, date_of_birth) "
@@ -116,9 +119,65 @@ def insert_person(person_data):
     return new_person_id
 
 
+def insert_passport(person_id):
+    conn = connect_to_db()
+    cur = conn.cursor()
+
+    # !TODO: Sort out database schema, this is getting fucking silly.
+    cur.execute("SET search_path = 'test_identity_system';")
+
+    # Start date is a random date in the last 7 years
+    start_date = fake.past_date(start_date="-7y")
+    # End date is 10 years after start date
+    end_date = start_date + datetime.timedelta(days=365 * 10)
+
+    cur.execute("""
+        INSERT INTO Passports (person_id, passport_number, nationality, date_of_issue, expiration_date, place_of_issue)
+        VALUES (%s, %s, %s, %s, %s, %s);
+    """, (person_id, fake.bothify(text='??########'), fake.country(), start_date, end_date, fake.city()))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def insert_drivers_license(person_id):
+    conn = connect_to_db()
+    cur = conn.cursor()
+
+    # !TODO: Sort out database schema, this is getting fucking silly.
+    cur.execute("SET search_path = 'test_identity_system';")
+
+    # !TODO: Maybe remove end date? Not sure if drivers licenses have an end date...
+    # Start date is a random date in the last 7 years
+    start_date = fake.past_date(start_date="-7y")
+    # End date is 10 years after start date
+    end_date = start_date + datetime.timedelta(days=365 * 10)
+
+    cur.execute("""
+        INSERT INTO DriversLicenses (person_id, license_number, date_of_issue, expiration_date, categories, restrictions)
+        VALUES (%s, %s, %s, %s, %s, %s);
+    """, (person_id, fake.bothify(text='##########'), start_date, end_date, 'B, A', 'None'))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
 def main():
     person_data = generate_person_data()
     uuid = insert_person(person_data)
+
+    conn = connect_to_db()
+    cur = conn.cursor()
+    cur.execute("SET search_path = 'test_identity_system';")
+
+    cur.execute("SELECT person_id FROM Persons WHERE uuid = %s;", (uuid,))
+    person_id = cur.fetchone()[0]
+
+    cur.close()
+
+    insert_passport(person_id)
+    insert_drivers_license(person_id)
+
     print(f"New person inserted with id: {uuid}")
 
 
