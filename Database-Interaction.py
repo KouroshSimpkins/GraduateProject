@@ -156,7 +156,8 @@ def insert_drivers_license(person_id):
     end_date = start_date + datetime.timedelta(days=365 * 10)
 
     cur.execute("""
-        INSERT INTO DriversLicenses (person_id, license_number, date_of_issue, expiration_date, categories, restrictions)
+        INSERT INTO DriversLicenses (person_id, license_number, date_of_issue,
+         expiration_date, categories, restrictions)
         VALUES (%s, %s, %s, %s, %s, %s);
     """, (person_id, fake.bothify(text='##########'), start_date, end_date, 'B, A', 'None'))
     conn.commit()
@@ -166,7 +167,6 @@ def insert_drivers_license(person_id):
 
 def insert_fingerprints(person_id, finger_name, fingerprint_data):
     conn = connect_to_db()
-    cur = conn.cursor()
 
     try:
         cur = conn.cursor()
@@ -192,6 +192,31 @@ def get_fingerprint_data(api_url):
         return None
 
 
+def generate_connection(person1_id, person2_id):
+    """
+    Generate a connection between two people.
+
+    :param person1_id:
+    :param person2_id:
+    :return:
+    """
+    conn = connect_to_db()
+    cur = conn.cursor()
+
+    cur.execute("SET search_path = 'test_identity_system';")
+
+    relationship = fake.random_element(elements=['friend', 'colleague', 'family', 'business_partner'])
+
+    cur.execute("""
+    INSERT INTO relationships (person1_id, person2_id, relationship_type)
+    VALUES (%s, %s, %s);
+    """, (person1_id, person2_id, relationship))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
 def main():
     # !TODO: Hardcode tailscale IP address (for showcase)
     api_url = "http://127.0.0.1:4999/fingerprint_gen_api"
@@ -208,6 +233,17 @@ def main():
     cur.execute("SELECT person_id FROM Persons WHERE uuid = %s;", (uuid,))
     person_id = cur.fetchone()[0]
 
+    num_of_connections = random.randint(200, 400)
+
+    for _ in range(num_of_connections):
+        cur.execute("SELECT uuid FROM persons ORDER BY RANDOM() LIMIT 1;")
+        random_uuid = cur.fetchone()[0]
+
+        cur.execute("SELECT person_id FROM Persons WHERE uuid = %s;", (random_uuid,))
+        person2_id = cur.fetchone()[0]
+
+        generate_connection(person_id, person2_id)
+
     for finger_name in finger_names:
         fingerprint_data = get_fingerprint_data(api_url)
         insert_fingerprints(person_id, finger_name, fingerprint_data)
@@ -221,5 +257,5 @@ def main():
 
 
 if __name__ == "__main__":
-    for i in range(1000):
+    for i in range(50):
         main()
