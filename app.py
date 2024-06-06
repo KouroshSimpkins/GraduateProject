@@ -56,5 +56,23 @@ def get_newest_person():
         return jsonify({"error": f"Error loading person data: {e}"})
 
 
+@app.route('/details/<int:person_id>')
+def get_person_details(person_id):
+    conn = connect_to_db()
+
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+        SELECT passport_number, nationality FROM test_identity_system.passports
+        WHERE person_id = %s;
+        """, (person_id,))
+        data = cur.fetchone()
+        cur.close()
+        conn.close()
+        return jsonify(data)
+    except psycopg2.DatabaseError as e:
+        return jsonify({"error": f"Error loading person data: {e}"})
+
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5001, debug=True)
