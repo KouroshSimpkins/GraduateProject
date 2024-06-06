@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Interactive Force-Directed Node Visualization</title>
+    <style>
+        body, html { margin: 0; height: 100%; overflow: hidden; }
+        svg { display: block; width: 100%; height: 100%; }
+    </style>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+<body>
+    <svg></svg>
+
+    <script>
+        const svg = d3.select("svg"),
+              width = window.innerWidth,
+              height = window.innerHeight;
+
+        svg.attr("width", width).attr("height", height);
+
+        // Create a group element that will hold all our visual elements
+        const g = svg.append("g");
+
+        // Define the zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.5, 10]) // Limits for zoom scaling
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform); // Apply the zoom and pan
+            });
+
+        // Apply the zoom behavior to the SVG
+        svg.call(zoom);
+
+        // Setup force simulation
+        const simulation = d3.forceSimulation()
+            .force("charge", d3.forceManyBody().strength(-200))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collision", d3.forceCollide().radius(50));
+
+        function drawNodes(data) {
+            const nodes = g.selectAll("circle")
+                .data(data)
+                .enter().append("circle")
+                .attr("r", 40)
+                .attr("fill", "steelblue");
+
+            const labels = g.selectAll("text")
+                .data(data)
+                .enter().append("text")
+                .attr("dy", "0.35em")
+                .attr("text-anchor", "middle")
+                .text(d => d[1]) // Display the first name
+                .attr("fill", "white");
+
+            // Update the simulation with the fetched data
+            simulation.nodes(data)
+                .on("tick", () => {
+                    nodes.attr("cx", d => d.x)
+                         .attr("cy", d => d.y);
+
+                    labels.attr("x", d => d.x)
+                          .attr("y", d => d.y);
+                });
+        }
+
+        // Fetch the data from the server
+        d3.json('http://localhost:5001/data').then(function(data) {
+            console.log(data);
+            drawNodes(data);
+        }).catch(error => console.error('Error fetching data:', error));
+    </script>
+</body>
+</html>

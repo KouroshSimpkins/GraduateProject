@@ -1,4 +1,5 @@
 from flask import Flask, jsonify
+from flask_cors import CORS
 import psycopg2
 import os
 from dotenv import load_dotenv
@@ -12,6 +13,8 @@ db_password = os.getenv('DB_PASSWORD')
 db_host = os.getenv('DB_HOST')
 
 app = Flask(__name__)
+CORS(app)  # Development only
+# !TODO: Remove CORS in production
 
 
 @app.route('/data')
