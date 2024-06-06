@@ -235,6 +235,9 @@ def main():
 
     num_of_connections = random.randint(200, 400)
 
+    # This generations system assumes a database that already has people in it.
+    # If for the showcase, I want a fresh database I'll need to make some changes.
+
     for _ in range(num_of_connections):
         cur.execute("SELECT uuid FROM persons ORDER BY RANDOM() LIMIT 1;")
         random_uuid = cur.fetchone()[0]
