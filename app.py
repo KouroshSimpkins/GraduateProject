@@ -35,5 +35,26 @@ def get_data():
         return jsonify({"error": f"Error loading person data: {e}"})
 
 
+@app.route('/newest_person')
+def get_newest_person():
+    conn = connect_to_db()
+
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+        SELECT person_id, first_name, last_name, email, date_of_birth
+        FROM test_identity_system.persons
+        ORDER BY person_id DESC
+        LIMIT 1;
+        """)
+        # This feels like such a jank fucking fix, but it works so whatever
+        data = [cur.fetchone()]
+        cur.close()
+        conn.close()
+        return jsonify(data)
+    except psycopg2.DatabaseError as e:
+        return jsonify({"error": f"Error loading person data: {e}"})
+
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5001, debug=True)
