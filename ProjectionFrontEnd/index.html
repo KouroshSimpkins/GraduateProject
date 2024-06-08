@@ -93,6 +93,36 @@
                 });
         }
 
+        function drawRelationships(data) {
+            g.selectAll("*").remove(); // Clear the previous nodes
+
+            const links = g.selectAll("line")
+                .data(data)
+                .enter().append("line")
+                .attr("stroke", "grey")
+                .attr("stroke-width", 1);
+
+            const labels = g.selectAll("text")
+                .data(data)
+                .enter().append("text")
+                .attr("dy", "0.35em")
+                .attr("text-anchor", "middle")
+                .text(d => d[1]) // Display the first name
+                .attr("fill", "white");
+
+            // Update the simulation with the fetched data
+            simulation.nodes(data)
+                .on("tick", () => {
+                    links.attr("x1", d => d[0].x)
+                         .attr("y1", d => d[0].y)
+                         .attr("x2", d => d[1].x)
+                         .attr("y2", d => d[1].y);
+
+                    labels.attr("x", d => (d[0].x + d[1].x) / 2)
+                          .attr("y", d => (d[0].y + d[1].y) / 2);
+                });
+        }
+
         function fetchDetails(userId) {
             d3.json(`http://localhost:5001/details/${userId}`).then(function(data) {
                 console.log(data);
@@ -100,7 +130,7 @@
         }
 
         // Fetch the data from the server
-        d3.json('http://localhost:5001/newest_person').then(function(data) {
+        d3.json('http://localhost:5001/data').then(function(data) {
             console.log(data);
             drawNodes(data);
         }).catch(error => console.error('Error fetching data:', error));

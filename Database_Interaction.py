@@ -6,6 +6,7 @@ import datetime
 import os
 from dotenv import load_dotenv
 from networkx.algorithms.components import connected
+import logging
 
 fake = Faker('en_GB')
 
@@ -194,27 +195,52 @@ def get_fingerprint_data(api_url):
 
 def generate_connection(person1_id, person2_id):
     """
-    Generate a connection between two people.
+    Generate a connection between two distinct people ensuring no duplicates, with warnings.
 
-    :param person1_id:
-    :param person2_id:
-    :return:
+    :param person1_id: Identifier for the first person
+    :param person2_id: Identifier for the second person
+    :return: None
     """
+    # Set up basic logging (configure as needed for your application)
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+    # Ensure the two IDs are different
+    if person1_id == person2_id:
+        logging.warning("Attempted to create a relationship with oneself. Operation skipped.")
+        return  # Exit the function early
+
     conn = connect_to_db()
     cur = conn.cursor()
 
-    cur.execute("SET search_path = 'test_identity_system';")
+    try:
+        # Set the schema
+        cur.execute("SET search_path TO 'test_identity_system';")
 
-    relationship = fake.random_element(elements=['friend', 'colleague', 'family', 'business_partner'])
+        # Check if a relationship already exists between the two, regardless of order
+        cur.execute("""
+        SELECT COUNT(*) FROM relationships
+        WHERE (person1_id = %s AND person2_id = %s) OR (person1_id = %s AND person2_id = %s);
+        """, (person1_id, person2_id, person2_id, person1_id))
 
-    cur.execute("""
-    INSERT INTO relationships (person1_id, person2_id, relationship_type)
-    VALUES (%s, %s, %s);
-    """, (person1_id, person2_id, relationship))
+        if cur.fetchone()[0] > 0:
+            logging.warning(
+                "A relationship already exists between person ID {} and person ID {}. Operation skipped.".format(
+                    person1_id, person2_id))
+            return  # Exit the function early
 
-    conn.commit()
-    cur.close()
-    conn.close()
+        # Generate a random relationship type
+        relationship = fake.random_element(elements=['friend', 'colleague', 'family', 'business_partner'])
+
+        # Insert the new relationship
+        cur.execute("""
+        INSERT INTO relationships (person1_id, person2_id, relationship_type)
+        VALUES (%s, %s, %s);
+        """, (person1_id, person2_id, relationship))
+
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
 
 
 def main():
@@ -260,5 +286,5 @@ def main():
 
 
 if __name__ == "__main__":
-    for i in range(50):
+    for i in range(100):
         main()

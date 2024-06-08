@@ -63,10 +63,37 @@ def get_person_details(person_id):
     try:
         cur = conn.cursor()
         cur.execute("""
-        SELECT passport_number, nationality FROM test_identity_system.passports
-        WHERE person_id = %s;
+        SELECT p.person_id, p.first_name, p.last_name, p.email, p.date_of_birth,
+        f.finger_name,
+        pa.passport_number, pa.nationality, pa.date_of_issue, pa.expiration_date,
+        dr.license_number, dr.date_of_issue, dr.expiration_date, dr.categories
+        FROM test_identity_system.persons p
+        LEFT JOIN test_identity_system.fingerprints f ON p.person_id = f.person_id
+        LEFT JOIN test_identity_system.passports pa ON p.person_id = pa.person_id
+        LEFT JOIN test_identity_system.driverslicenses dr ON p.person_id = dr.person_id
+        WHERE p.person_id = %s;
         """, (person_id,))
-        data = cur.fetchone()
+        data = cur.fetchone()  # More fucking Jank
+        cur.close()
+        conn.close()
+        return jsonify(data)
+    except psycopg2.DatabaseError as e:
+        return jsonify({"error": f"Error loading person data: {e}"})
+
+
+@app.route('/relationships')
+def get_relationships():
+    conn = connect_to_db()
+
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+        SELECT p1.person_id, p1.first_name, p1.last_name, p2.person_id, p2.first_name, p2.last_name, c.relationship_type
+        FROM test_identity_system.persons p1
+        INNER JOIN test_identity_system.relationships c ON p1.person_id = c.person1_id
+        INNER JOIN test_identity_system.persons p2 ON p2.person_id = c.person2_id;
+        """)
+        data = cur.fetchall()
         cur.close()
         conn.close()
         return jsonify(data)
