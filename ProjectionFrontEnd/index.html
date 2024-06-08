@@ -94,7 +94,11 @@
                        .style("left", (event.pageX + 10) + "px")
                        .style("top", (event.pageY - 28) + "px");
             })
-            .on("mouseout", () => tooltip.style("opacity", 0));
+            .on("mouseout", () => tooltip.style("opacity", 0))
+            .on("click", (event, d) => {
+                highlightNodeAndConnections(d.id);
+                zoomToNode(d);
+            });
 
         const label = svg.append("g")
             .attr("class", "labels")
@@ -124,6 +128,55 @@
                 .attr("x", d => d.x)
                 .attr("y", d => d.y);
         }
+
+        function highlightNodeAndConnections(nodeId) {
+            node.style('opacity', 0.1);
+            link.style('opacity', 0.1);
+
+            const connectedLinks = link.filter(d => d.source.id === nodeId || d.target.id === nodeId)
+                .style('opacity', 1);
+
+            const connectedNodes = new Set();
+            connectedLinks.each(d => {
+                connectedNodes.add(d.source.id);
+                connectedNodes.add(d.target.id);
+            });
+
+            node.filter(d => connectedNodes.has(d.id))
+                .style('opacity', 1);
+        }
+
+        function resetHighlight() {
+            node.style('opacity', 1);
+            link.style('opacity', 1);
+        }
+
+        svg.on("dblclick", () => {
+            resetHighlight();
+            resetZoom();
+        });
+    }
+
+    function zoomToNode(node) {
+        const scale = 2;
+        const x = node.x;
+        const y = node.y;
+
+        svg.transition()
+            .duration(750)
+            .call(zoom.transform, d3.zoomIdentity.translate(width / 2 - x * scale, height / 2 - y * scale).scale(scale));
+    }
+
+    const zoom = d3.zoom()
+        .on("zoom", (event) => svg.attr("transform", event.transform))
+        .scaleExtent([0.5, 4]);
+
+    svg.call(zoom);
+
+    function resetZoom() {
+        svg.transition()
+            .duration(750)
+            .call(zoom.transform, d3.zoomIdentity);
     }
 
     function dragstarted(event, d) {
