@@ -47,8 +47,7 @@ def get_newest_person():
         ORDER BY person_id DESC
         LIMIT 1;
         """)
-        # This feels like such a jank fucking fix, but it works so whatever
-        data = [cur.fetchone()]
+        data = cur.fetchone()
         cur.close()
         conn.close()
         return jsonify(data)

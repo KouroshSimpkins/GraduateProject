@@ -10,7 +10,7 @@
             text-align: center;
             width: 140px;
             height: 28px;
-            padding: 2px 0;
+            padding: 2px;
             font: 12px sans-serif;
             background: rgba(0, 0, 0, 0.8);
             color: #fff;
@@ -26,114 +26,124 @@
     <svg></svg>
     <div class="tooltip"></div>
 
-    <script>
-        const svg = d3.select("svg"),
-              width = window.innerWidth,
-              height = window.innerHeight;
-        const tooltip = d3.select(".tooltip");
+   <script>
+    const svg = d3.select("svg"),
+          width = document.documentElement.clientWidth,
+          height = document.documentElement.clientHeight,
+          tooltip = d3.select(".tooltip");
 
-        svg.attr("width", width).attr("height", height);
+    svg.attr("width", width).attr("height", height);
 
-        // Create a group element that will hold all our visual elements
-        const g = svg.append("g");
+    const simulation = d3.forceSimulation()
+        .force("link", d3.forceLink().id(d => d.id).distance(100))
+        .force("charge", d3.forceManyBody().strength(-300))
+        .force("center", d3.forceCenter(width / 2, height / 2));
 
-        // Define the zoom behavior
-        const zoom = d3.zoom()
-            .scaleExtent([0.5, 10]) // Limits for zoom scaling
-            .on("zoom", (event) => {
-                g.attr("transform", event.transform); // Apply the zoom and pan
-            });
+    // Function to fetch data and draw the graph
+    function fetchData() {
+        fetch('http://localhost:5001/relationships')  // Change this URL to your actual data endpoint
+            .then(response => response.json())
+            .then(rawData => {
+                const { nodes, links } = processData(rawData);
+                drawGraph(nodes, links);
+            })
+            .catch(error => console.error('Failed to fetch data:', error));
+    }
 
-        // Apply the zoom behavior to the SVG
-        svg.call(zoom);
+    function processData(data) {
+        const nodes = new Map();
+        const links = [];
 
-        // Setup force simulation
-        const simulation = d3.forceSimulation()
-            .force("charge", d3.forceManyBody().strength(-100))
-            .force("center", d3.forceCenter(width / 2, height / 2))
-            .force("collision", d3.forceCollide().radius(50));
+        data.forEach(item => {
+            const [id1, firstName1, lastName1, id2, firstName2, lastName2, relationType] = item;
+            if (!nodes.has(id1)) {
+                nodes.set(id1, { id: id1, name: `${firstName1} ${lastName1}` });
+            }
+            if (!nodes.has(id2)) {
+                nodes.set(id2, { id: id2, name: `${firstName2} ${lastName2}` });
+            }
+            links.push({ source: id1, target: id2, type: relationType });
+        });
 
-        function drawNodes(data) {
-            g.selectAll("*").remove(); // Clear the previous nodes
+        return { nodes: Array.from(nodes.values()), links };
+    }
 
-            const nodes = g.selectAll("circle")
-                .data(data)
-                .enter().append("circle")
-                .attr("r", 40)
-                .attr("fill", "steelblue")
-                .on("mouseover", (event, d) => {
-                    tooltip.transition().duration(200).style("opacity", .9);
-                    tooltip.html(`ID: ${d[0]}<br>Name: ${d[1]} ${d[2]}<br>Email: ${d[3]}`)
-                        .style("left", (event.pageX + 10) + "px")
-                        .style("top", (event.pageY - 28) + "px");
-                })
-                .on("mouseout", d => {
-                    tooltip.transition().duration(500).style("opacity", 0);
-                })
-                .on("click", (event, d) => {
-                    fetchDetails(d[0]);
-                });
+    function drawGraph(nodes, links) {
+        const link = svg.append("g")
+            .attr("class", "links")
+            .selectAll("line")
+            .data(links)
+            .enter().append("line")
+            .attr("stroke", "grey")
+            .attr("stroke-width", 2);
 
-            const labels = g.selectAll("text")
-                .data(data)
-                .enter().append("text")
-                .attr("dy", "0.35em")
-                .attr("text-anchor", "middle")
-                .text(d => d[1]) // Display the first name
-                .attr("fill", "white");
+        const node = svg.append("g")
+            .attr("class", "nodes")
+            .selectAll("circle")
+            .data(nodes)
+            .enter().append("circle")
+            .attr("r", 20)
+            .attr("fill", "steelblue")
+            .call(d3.drag()
+                  .on("start", dragstarted)
+                  .on("drag", dragged)
+                  .on("end", dragended))
+            .on("mouseover", (event, d) => {
+                tooltip.style("opacity", 1)
+                       .html(`ID: ${d.id}<br>Name: ${d.name}`)
+                       .style("left", (event.pageX + 10) + "px")
+                       .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", () => tooltip.style("opacity", 0));
 
-            // Update the simulation with the fetched data
-            simulation.nodes(data)
-                .on("tick", () => {
-                    nodes.attr("cx", d => d.x)
-                         .attr("cy", d => d.y);
+        const label = svg.append("g")
+            .attr("class", "labels")
+            .selectAll("text")
+            .data(nodes)
+            .enter().append("text")
+            .text(d => d.name)
+            .attr("font-size", 12)
+            .attr("fill", "black")
+            .attr("dx", 20)
+            .attr("text-anchor", "middle")
+            .attr("dy", 5);
 
-                    labels.attr("x", d => d.x)
-                          .attr("y", d => d.y);
-                });
+        simulation.nodes(nodes).on("tick", ticked);
+        simulation.force("link").links(links);
+
+        function ticked() {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+            node
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y);
+            label
+                .attr("x", d => d.x)
+                .attr("y", d => d.y);
         }
+    }
 
-        function drawRelationships(data) {
-            g.selectAll("*").remove(); // Clear the previous nodes
+    function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
 
-            const links = g.selectAll("line")
-                .data(data)
-                .enter().append("line")
-                .attr("stroke", "grey")
-                .attr("stroke-width", 1);
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
 
-            const labels = g.selectAll("text")
-                .data(data)
-                .enter().append("text")
-                .attr("dy", "0.35em")
-                .attr("text-anchor", "middle")
-                .text(d => d[1]) // Display the first name
-                .attr("fill", "white");
+    function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
 
-            // Update the simulation with the fetched data
-            simulation.nodes(data)
-                .on("tick", () => {
-                    links.attr("x1", d => d[0].x)
-                         .attr("y1", d => d[0].y)
-                         .attr("x2", d => d[1].x)
-                         .attr("y2", d => d[1].y);
-
-                    labels.attr("x", d => (d[0].x + d[1].x) / 2)
-                          .attr("y", d => (d[0].y + d[1].y) / 2);
-                });
-        }
-
-        function fetchDetails(userId) {
-            d3.json(`http://localhost:5001/details/${userId}`).then(function(data) {
-                console.log(data);
-            }).catch(error => console.error('Error fetching data:', error));
-        }
-
-        // Fetch the data from the server
-        d3.json('http://localhost:5001/data').then(function(data) {
-            console.log(data);
-            drawNodes(data);
-        }).catch(error => console.error('Error fetching data:', error));
-    </script>
+    fetchData();
+</script>
 </body>
 </html>

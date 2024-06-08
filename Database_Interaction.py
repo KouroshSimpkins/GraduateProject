@@ -259,7 +259,7 @@ def main():
     cur.execute("SELECT person_id FROM Persons WHERE uuid = %s;", (uuid,))
     person_id = cur.fetchone()[0]
 
-    num_of_connections = random.randint(200, 400)
+    num_of_connections = random.randint(20, 40)
 
     # This generations system assumes a database that already has people in it.
     # If for the showcase, I want a fresh database I'll need to make some changes.
