@@ -100,5 +100,26 @@ def get_relationships():
         return jsonify({"error": f"Error loading person data: {e}"})
 
 
+@app.route('/relationships/<int:person_id>')
+def get_person_relationships(person_id):
+    conn = connect_to_db()
+
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+        SELECT p1.person_id, p1.first_name, p1.last_name, p2.person_id, p2.first_name, p2.last_name, c.relationship_type
+        FROM test_identity_system.persons p1
+        INNER JOIN test_identity_system.relationships c ON p1.person_id = c.person1_id
+        INNER JOIN test_identity_system.persons p2 ON p2.person_id = c.person2_id
+        WHERE p1.person_id = %s OR p2.person_id = %s;
+        """, (person_id, person_id))
+        data = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify(data)
+    except psycopg2.DatabaseError as e:
+        return jsonify({"error": f"Error loading person data: {e}"})
+
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5001, debug=True)
