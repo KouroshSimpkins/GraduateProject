@@ -251,13 +251,12 @@ def generate_person():
     cur = conn.cursor()
     cur.execute("SET search_path = 'test_identity_system';")
 
-    cur.execute("SELECT person_id FROM Persons WHERE uuid = %s;", (uuid,))
-    person_id = cur.fetchone()[0]
+    cur.execute("SELECT * FROM Persons WHERE uuid = %s;", (uuid,))
+    person_record = cur.fetchone()
+    person_id = person_record[0]  # Assuming person_id is the first column.
 
     num_of_connections = random.randint(20, 40)
-
-    # This generations system assumes a database that already has people in it.
-    # If for the showcase, I want a fresh database I'll need to make some changes.
+    connections = []
 
     for _ in range(num_of_connections):
         cur.execute("SELECT uuid FROM persons ORDER BY RANDOM() LIMIT 1;")
@@ -267,22 +266,37 @@ def generate_person():
         person2_id = cur.fetchone()[0]
 
         generate_connection(person_id, person2_id)
+        connections.append(person2_id)
 
-    finger_names = ['Right Thumb', 'Right Index', 'Right Middle', 'Right Ring', 'Right Little', 'Left Thumb',
-                    'Left Index', 'Left Middle', 'Left Ring', 'Left Little']
+    finger_names = ['Right Thumb', 'Right Index', 'Right Middle', 'Right Ring', 'Right Little',
+                    'Left Thumb', 'Left Index', 'Left Middle', 'Left Ring', 'Left Little']
+    fingerprints = []
 
     api_url = "http://127.0.0.1:4999/fingerprint_gen_api"
-
     for finger_name in finger_names:
         fingerprint_data = get_fingerprint_data(api_url)
         insert_fingerprints(person_id, finger_name, fingerprint_data)
+        fingerprints.append({finger_name: fingerprint_data})
 
     cur.close()
 
-    insert_passport(person_id)
-    insert_drivers_license(person_id)
+    # Additional personal documents
+    passport_id = insert_passport(person_id)
+    drivers_license_id = insert_drivers_license(person_id)
+
+    # Compile all generated data into a result dictionary
+    result = {
+        "uuid": uuid,
+        "person_record": person_record,
+        "connections": connections,
+        "fingerprints": fingerprints,
+        "passport_id": passport_id,
+        "drivers_license_id": drivers_license_id
+    }
 
     print(f"New person inserted with id: {uuid}")
+    return result
+
 
 
 def main():
