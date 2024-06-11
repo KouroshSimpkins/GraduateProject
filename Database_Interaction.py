@@ -243,6 +243,48 @@ def generate_connection(person1_id, person2_id):
         conn.close()
 
 
+def generate_person():
+    person_data = generate_person_data()
+    uuid = insert_person(person_data)
+
+    conn = connect_to_db()
+    cur = conn.cursor()
+    cur.execute("SET search_path = 'test_identity_system';")
+
+    cur.execute("SELECT person_id FROM Persons WHERE uuid = %s;", (uuid,))
+    person_id = cur.fetchone()[0]
+
+    num_of_connections = random.randint(20, 40)
+
+    # This generations system assumes a database that already has people in it.
+    # If for the showcase, I want a fresh database I'll need to make some changes.
+
+    for _ in range(num_of_connections):
+        cur.execute("SELECT uuid FROM persons ORDER BY RANDOM() LIMIT 1;")
+        random_uuid = cur.fetchone()[0]
+
+        cur.execute("SELECT person_id FROM Persons WHERE uuid = %s;", (random_uuid,))
+        person2_id = cur.fetchone()[0]
+
+        generate_connection(person_id, person2_id)
+
+    finger_names = ['Right Thumb', 'Right Index', 'Right Middle', 'Right Ring', 'Right Little', 'Left Thumb',
+                    'Left Index', 'Left Middle', 'Left Ring', 'Left Little']
+
+    api_url = "http://127.0.0.1:4999/fingerprint_gen_api"
+
+    for finger_name in finger_names:
+        fingerprint_data = get_fingerprint_data(api_url)
+        insert_fingerprints(person_id, finger_name, fingerprint_data)
+
+    cur.close()
+
+    insert_passport(person_id)
+    insert_drivers_license(person_id)
+
+    print(f"New person inserted with id: {uuid}")
+
+
 def main():
     # !TODO: Hardcode tailscale IP address (for showcase)
     api_url = "http://127.0.0.1:4999/fingerprint_gen_api"

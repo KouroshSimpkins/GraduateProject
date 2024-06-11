@@ -41,11 +41,24 @@ def generate_graph(data):
         g.add_node(row[3], first_name=row[4], last_name=row[5])
         g.add_edge(row[0], row[3], relationship=row[6])
 
-    return g
+    node_labels = nx.get_node_attributes(g, 'first_name')
+
+    return g, node_labels
 
 
 if __name__ == "__main__":
+
+    plt.figure(figsize=(45, 30))
+
     test_data = load_person_data()
-    Graph = generate_graph(test_data)
-    nx.draw(Graph, with_labels=True)
+
+    print(test_data)
+
+    Graph, nodes = generate_graph(test_data)
+
+    pos = nx.spring_layout(Graph)
+    nx.draw_networkx_nodes(Graph, pos, node_size=700)
+    nx.draw_networkx_edges(Graph, pos)
+    nx.draw_networkx_labels(Graph, pos, font_size=12, font_family='sans-serif', labels=nodes)
+
     plt.show()

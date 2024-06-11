@@ -3,7 +3,7 @@ from flask_cors import CORS
 import psycopg2
 import os
 from dotenv import load_dotenv
-from Database_Interaction import connect_to_db
+from Database_Interaction import connect_to_db, generate_person
 
 load_dotenv()
 
@@ -119,6 +119,12 @@ def get_person_relationships(person_id):
         return jsonify(data)
     except psycopg2.DatabaseError as e:
         return jsonify({"error": f"Error loading person data: {e}"})
+
+
+@app.route('/new_person', methods=['POST'])
+def add_new_person():
+    generate_person()
+    return jsonify({"message": "Person added"})
 
 
 if __name__ == "__main__":
