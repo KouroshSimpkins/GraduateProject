@@ -21,100 +21,88 @@
         }
     </style>
     <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
 </head>
 <body>
     <svg></svg>
     <div class="tooltip"></div>
 
-   <script>
-    const svg = d3.select("svg"),
-          width = document.documentElement.clientWidth,
-          height = document.documentElement.clientHeight,
-          tooltip = d3.select(".tooltip");
+    <script>
+        const svg = d3.select("svg"),
+              width = document.documentElement.clientWidth,
+              height = document.documentElement.clientHeight,
+              tooltip = d3.select(".tooltip");
 
-    svg.attr("width", width).attr("height", height);
+        svg.attr("width", width).attr("height", height);
 
-    const simulation = d3.forceSimulation()
-        .force("link", d3.forceLink().id(d => d.id).distance(500))
-        .force("charge", d3.forceManyBody().strength(-100))
-        .force("collision", d3.forceCollide().radius(50))
-        .force("center", d3.forceCenter(width / 2, height / 2));
+        const simulation = d3.forceSimulation()
+            .force("link", d3.forceLink().id(d => d.id).distance(500))
+            .force("charge", d3.forceManyBody().strength(-100))
+            .force("collision", d3.forceCollide().radius(50))
+            .force("center", d3.forceCenter(width / 2, height / 2));
 
-    // Function to fetch data and draw the graph
-    function fetchData() {
-        fetch('http://localhost:5001/relationships')  // Change this URL to your actual data endpoint
-            .then(response => response.json())
-            .then(rawData => {
-                const { nodes, links } = processData(rawData);
-                drawGraph(nodes, links);
-            })
-            .catch(error => console.error('Failed to fetch data:', error));
-    }
+        let nodes = [];
+        let links = [];
 
-    function processData(data) {
-        const nodes = new Map();
-        const links = [];
+        const linkGroup = svg.append("g")
+            .attr("class", "links");
 
-        data.forEach(item => {
-            const [id1, firstName1, lastName1, id2, firstName2, lastName2, relationType] = item;
-            if (!nodes.has(id1)) {
-                nodes.set(id1, { id: id1, name: `${firstName1} ${lastName1}` });
-            }
-            if (!nodes.has(id2)) {
-                nodes.set(id2, { id: id2, name: `${firstName2} ${lastName2}` });
-            }
-            links.push({ source: id1, target: id2, type: relationType });
-        });
+        const nodeGroup = svg.append("g")
+            .attr("class", "nodes");
 
-        return { nodes: Array.from(nodes.values()), links };
-    }
+        const labelGroup = svg.append("g")
+            .attr("class", "labels");
 
-    function drawGraph(nodes, links) {
-        const link = svg.append("g")
-            .attr("class", "links")
-            .selectAll("line")
-            .data(links)
-            .enter().append("line")
-            .attr("stroke", "grey")
-            .attr("stroke-width", 2);
+        let link = linkGroup.selectAll("line");
+        let node = nodeGroup.selectAll("circle");
+        let label = labelGroup.selectAll("text");
 
-        const node = svg.append("g")
-            .attr("class", "nodes")
-            .selectAll("circle")
-            .data(nodes)
-            .enter().append("circle")
-            .attr("r", 20)
-            .attr("fill", "steelblue")
-            .call(d3.drag()
-                  .on("start", dragstarted)
-                  .on("drag", dragged)
-                  .on("end", dragended))
-            .on("mouseover", (event, d) => {
-                tooltip.style("opacity", 1)
-                       .html(`ID: ${d.id}<br>Name: ${d.name}`)
-                       .style("left", (event.pageX + 10) + "px")
-                       .style("top", (event.pageY - 28) + "px");
-            })
-            .on("mouseout", () => tooltip.style("opacity", 0))
-            .on("click", (event, d) => {
-                highlightNodeAndConnections(d.id);
-                zoomToNode(d);
-            });
+        function updateGraph() {
+            link = link.data(links);
+            link.exit().remove();
+            link = link.enter().append("line")
+                .attr("stroke", "grey")
+                .attr("stroke-width", 2)
+                .merge(link);
 
-        const label = svg.append("g")
-            .attr("class", "labels")
-            .selectAll("text")
-            .data(nodes)
-            .enter().append("text")
-            .text(d => d.name)
-            .attr("font-size", 12)
-            .attr("fill", "black")
-            .attr("dx", 20)
-            .attr("text-anchor", "middle")
-            .attr("dy", 5);
+            node = node.data(nodes);
+            node.exit().remove();
+            node = node.enter().append("circle")
+                .attr("r", 20)
+                .attr("fill", "steelblue")
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended))
+                .on("mouseover", (event, d) => {
+                    tooltip.style("opacity", 1)
+                           .html(`ID: ${d.id}<br>Name: ${d.name}`)
+                           .style("left", (event.pageX + 10) + "px")
+                           .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", () => tooltip.style("opacity", 0))
+                .on("click", (event, d) => {
+                    highlightNodeAndConnections(d.id);
+                    zoomToNode(d);
+                })
+                .merge(node);
 
-        simulation.nodes(nodes).on("tick", ticked);
-        simulation.force("link").links(links);
+            label = label.data(nodes);
+            label.exit().remove();
+            label = label.enter().append("text")
+                .text(d => d.name)
+                .attr("font-size", 12)
+                .attr("fill", "black")
+                .attr("dx", 20)
+                .attr("text-anchor", "middle")
+                .attr("dy", 5)
+                .merge(label);
+
+            simulation.nodes(nodes).on("tick", ticked);
+            simulation.force("link").links(links);
+
+            simulation.alpha(1).restart();
+        }
 
         function ticked() {
             link
@@ -156,48 +144,99 @@
             resetHighlight();
             resetZoom();
         });
-    }
 
-    function zoomToNode(node) {
-        const scale = 2;
-        const x = node.x;
-        const y = node.y;
+        function zoomToNode(node) {
+            const scale = 2;
+            const x = node.x;
+            const y = node.y;
 
-        svg.transition()
-            .duration(750)
-            .call(zoom.transform, d3.zoomIdentity.translate(width / 2 - x * scale, height / 2 - y * scale).scale(scale));
-    }
+            svg.transition()
+                .duration(750)
+                .call(zoom.transform, d3.zoomIdentity.translate(width / 2 - x * scale, height / 2 - y * scale).scale(scale));
+        }
 
-    const zoom = d3.zoom()
-        .on("zoom", (event) => svg.attr("transform", event.transform))
-        .scaleExtent([0.5, 4]);
+        const zoom = d3.zoom()
+            .on("zoom", (event) => svg.attr("transform", event.transform))
+            .scaleExtent([0.5, 4]);
 
-    svg.call(zoom);
+        svg.call(zoom);
 
-    function resetZoom() {
-        svg.transition()
-            .duration(750)
-            .call(zoom.transform, d3.zoomIdentity);
-    }
+        function resetZoom() {
+            svg.transition()
+                .duration(750)
+                .call(zoom.transform, d3.zoomIdentity);
+        }
 
-    function dragstarted(event, d) {
-        if (!event.active) simulation.alphaTarget(0.3).restart();
-        d.fx = d.x;
-        d.fy = d.y;
-    }
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
 
-    function dragged(event, d) {
-        d.fx = event.x;
-        d.fy = event.y;
-    }
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
 
-    function dragended(event, d) {
-        if (!event.active) simulation.alphaTarget(0);
-        d.fx = null;
-        d.fy = null;
-    }
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
 
-    fetchData();
-</script>
+        // Connect to the Flask-SocketIO server
+        const socket = io.connect('http://127.0.0.1:5001');
+
+        socket.on('new_identity_generated', () => {
+            fetch('http://127.0.0.1:5001/newest_person')
+                .then(response => response.json())
+                .then(data => {
+                    const newNode = { id: data.id, name: data.name };
+                    const newLinks = data.relationships.map(relation => ({
+                        source: data.id,
+                        target: relation.id,
+                        type: relation.type
+                    }));
+
+                    nodes.push(newNode);
+                    links.push(...newLinks);
+
+                    updateGraph();
+                })
+                .catch(error => console.error('Failed to fetch latest identity:', error));
+        });
+
+        fetchData();
+
+        function fetchData() {
+            fetch('http://127.0.0.1:5001/relationships/newest_person')  // Change this URL to your actual data endpoint
+                .then(response => response.json())
+                .then(rawData => {
+                    const { nodes: newNodes, links: newLinks } = processData(rawData);
+                    nodes = newNodes;
+                    links = newLinks;
+                    updateGraph();
+                })
+                .catch(error => console.error('Failed to fetch data:', error));
+        }
+
+        function processData(data) {
+            const nodes = new Map();
+            const links = [];
+
+            data.forEach(item => {
+                const [id1, firstName1, lastName1, id2, firstName2, lastName2, relationType] = item;
+                if (!nodes.has(id1)) {
+                    nodes.set(id1, { id: id1, name: `${firstName1} ${lastName1}` });
+                }
+                if (!nodes.has(id2)) {
+                    nodes.set(id2, { id: id2, name: `${firstName2} ${lastName2}` });
+                }
+                links.push({ source: id1, target: id2, type: relationType });
+            });
+
+            return { nodes: Array.from(nodes.values()), links };
+        }
+    </script>
 </body>
 </html>

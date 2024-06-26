@@ -67,8 +67,8 @@ def send_post_request(url):
 
 
 if __name__ == "__main__":
-    url_receive = "http://192.168.1.10:5001/newest_person"
-    url_post = "http://192.168.1.10:5001/new_person"  # Endpoint to generate new person
+    url_receive = "http://kouroshs-macbook-pro:5001/newest_person"
+    url_post = "http://kouroshs-macbook-pro:5001/new_person"  # Endpoint to generate new person
 
     while True:
         os.system('clear')

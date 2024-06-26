@@ -7,8 +7,70 @@ import os
 from dotenv import load_dotenv
 from networkx.algorithms.components import connected
 import logging
+from geopy.geocoders import Nominatim
 
 fake = Faker('en_GB')
+
+
+def pick_random_address():
+    """
+    Select a random address within a radius, storing it in the database, and then adding a person to that address.
+
+    :return:
+    """
+    # Step 1: Geocode the given address with a proper user-agent
+    geolocator = Nominatim(user_agent="Safari")
+    address = "42 Bonar Rd, London SE15 5FB, UK"
+    try:
+        location = geolocator.geocode(address)
+        if not location:
+            print("Address not found!")
+            return
+
+        latitude = location.latitude
+        longitude = location.longitude
+
+        print(f"Latitude: {latitude}, Longitude: {longitude}")
+
+        # Step 2: Use Nominatim API to find addresses within a radius
+        radius = 1000  # radius in meters
+        url = f"https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat={latitude}&lon={longitude}&radius={radius}&extratags=1"
+
+        print(url)
+
+        # Make the request to the Nominatim API with a proper user-agent
+        headers = {
+            'User-Agent': 'Safari (kouroshsimpkins@gmail.com)'  # Replace with your email or contact info
+        }
+        response = requests.get(url, headers=headers)
+
+        # Check the response status
+        if response.status_code != 200:
+            print(f"Error: Received status code {response.status_code}")
+            print(response.text)
+            return
+
+        # Print raw response content for debugging
+        print(f"Raw response content: {response.text}")
+
+        # Parse the JSON response
+        try:
+            results = response.json()
+        except ValueError:
+            print("Error parsing JSON response")
+            return
+
+        # Ensure the results are in the expected format (list of dictionaries)
+        if not isinstance(results, list):
+            print("Unexpected response format")
+            return
+
+        # Extract and print the addresses
+        addresses = [result['display_name'] for result in results]
+        print(addresses)
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 
 def generate_email(first_name, last_name, date_of_birth):
@@ -298,7 +360,6 @@ def generate_person():
     return result
 
 
-
 def main():
     # !TODO: Hardcode tailscale IP address (for showcase)
     api_url = "http://127.0.0.1:4999/fingerprint_gen_api"
@@ -342,5 +403,4 @@ def main():
 
 
 if __name__ == "__main__":
-    for i in range(100):
-        main()
+    pick_random_address()

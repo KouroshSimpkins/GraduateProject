@@ -1,10 +1,69 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Final Visualisation</title>
+    <title>Label-Free Dark Mode OpenStreetMap with Custom Pins and User Location</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
 </head>
 <body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // Your Mapbox access token
+        var accessToken = 'pk.eyJ1Ijoia291cm9zaHNpbXBraW5zIiwiYSI6ImNseHRzdzN0YzF5Y28yanNldWxpOXUyNTMifQ.mZ0M4nnSLeJ7eSZEt8b-KA';
 
+        // Initialize the map without a specific center
+        var map = L.map('map');
+
+        // Load and display label-free dark mode tile layer from Mapbox
+        L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+            id: 'kouroshsimpkins/clxtszz7w00sp01r2c2a10h44', // Replace with your custom style ID
+            accessToken: accessToken,
+            tileSize: 512,
+            zoomOffset: -1,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://www.mapbox.com/">Mapbox</a>'
+        }).addTo(map);
+
+        // Add custom pins
+        var customPins = [
+            { "lat": 51.5, "lng": -0.09, "popup": "Pin 1" },
+            { "lat": 51.51, "lng": -0.1, "popup": "Pin 2" },
+            { "lat": 51.49, "lng": -0.08, "popup": "Pin 3" }
+        ];
+
+        customPins.forEach(function(pin) {
+            L.marker([pin.lat, pin.lng]).addTo(map)
+                .bindPopup(pin.popup)
+                .openPopup();
+        });
+
+        // Center the map on the user's location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                var userLat = position.coords.latitude;
+                var userLng = position.coords.longitude;
+                map.setView([userLat, userLng], 13);
+
+                // Add a marker for the user's location
+                L.marker([userLat, userLng]).addTo(map)
+                    .bindPopup('You are here.')
+                    .openPopup();
+            }, function(error) {
+                console.error("Geolocation error:", error);
+                alert("Unable to retrieve your location");
+            });
+        } else {
+            alert("Geolocation is not supported by your browser");
+        }
+    </script>
 </body>
 </html>
