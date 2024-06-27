@@ -241,7 +241,7 @@ def get_newest_person_address():
     try:
         cur = conn.cursor()
         cur.execute("""
-        SELECT a.latitude, a.longitude, p.first_name, p.last_name
+        SELECT a.latitude, a.longitude, p.first_name, p.last_name, p.person_id
         FROM test_identity_system.persons p
         INNER JOIN test_identity_system.addresses a ON p.home_address_id = a.address_id
         ORDER BY p.person_id DESC

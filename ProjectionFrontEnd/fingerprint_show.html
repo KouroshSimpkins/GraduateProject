@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Loop</title>
+    <style>
+        #image-container {
+            text-align: center;
+            margin-top: 50px;
+        }
+        img {
+            max-width: 80%;
+            height: auto;
+            display: none; /* Initially hide the image */
+        }
+    </style>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+</head>
+<body>
+    <div id="image-container">
+        <img id="displayed-image" src="" alt="Loading...">
+    </div>
+
+    <script>
+        const socket = io('http://kouroshs-macbook-pro:5001');
+
+        socket.on('new_identity_generated', function(data) {
+            console.log('Broadcast message received:', data);
+            const personId = data.person_id;
+            if (personId) {
+                fetchAndDisplayImages(personId);
+            }
+        });
+
+        function fetchAndDisplayImages(personId) {
+            fetch(`http://kouroshs-macbook-pro:5001/fingerprints/${personId}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Fetched data:', data);
+                    let index = 0;
+
+                    function displayNextImage() {
+                        if (index < data.length) {
+                            const fingerprint = data[index];
+                            console.log('Displaying fingerprint:', fingerprint);
+                            if (fingerprint.fingerprint_data) {
+                                displayImage(fingerprint.fingerprint_data);
+                                index++;
+                                setTimeout(displayNextImage, 2000); // Display each image for 2 seconds
+                            } else {
+                                index++;
+                                displayNextImage();
+                            }
+                        }
+                    }
+
+                    displayNextImage();
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function displayImage(base64Data) {
+            try {
+                // Create a new image element
+                const imgElement = document.getElementById('displayed-image');
+                imgElement.src = `data:image/png;base64,${base64Data}`;
+                console.log('Image src set to:', imgElement.src);
+                imgElement.style.display = 'block'; // Show the image
+            } catch (error) {
+                console.error('Error displaying image:', error);
+            }
+        }
+    </script>
+</body>
+</html>

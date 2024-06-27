@@ -95,6 +95,27 @@
         socket.onerror = function(error) {
             console.error('WebSocket error:', error);
         };
+
+        function loopThroughPins(pins, delay) {
+            let index = 0;
+            function focusNextPin() {
+                if (index < pins.length) {
+                    map.setView([pins[index].lat, pins[index].lng], 13);
+                    L.popup()
+                            .setLatLng([pins[index].lat, pins[index].lng])
+                            .setContent(pins[index].popup)
+                            .openOn(map);
+                    index++;
+                    setTimeout(focusNextPin, delay);
+                } else {
+                    index = 0;
+                    setTimeout(focusNextPin, delay);
+                }
+            }
+            focusNextPin();
+        }
+
+        loopThroughPins(customPins, 30000);
     </script>
 </body>
 </html>
