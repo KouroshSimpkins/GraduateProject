@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 from networkx.algorithms.components import connected
 import logging
+from geopy.distance import geodesic
 from geopy.geocoders import Nominatim
 
 fake = Faker('en_GB')
@@ -18,59 +19,21 @@ def pick_random_address():
 
     :return:
     """
-    # Step 1: Geocode the given address with a proper user-agent
+    # Select a random point within a 2km radius of a given address, using Nominatim to get the coordinates.
     geolocator = Nominatim(user_agent="Safari")
-    address = "42 Bonar Rd, London SE15 5FB, UK"
-    try:
-        location = geolocator.geocode(address)
-        if not location:
-            print("Address not found!")
-            return
+    location = geolocator.geocode("42 Bonar Road, London, SE15 5JY")
+    latitude = location.latitude
+    longitude = location.longitude
 
-        latitude = location.latitude
-        longitude = location.longitude
+    # Generate a random point within a 2km radius of the selected point
+    point = (latitude, longitude)
+    radius = 2000
+    random_point = geodesic(point, random.uniform(0, radius)).destination(bearing=random.uniform(0, 360),
+                                                                           distance=random.uniform(0, radius))
+    latitude = random_point[0]
+    longitude = random_point[1]
 
-        print(f"Latitude: {latitude}, Longitude: {longitude}")
-
-        # Step 2: Use Nominatim API to find addresses within a radius
-        radius = 1000  # radius in meters
-        url = f"https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat={latitude}&lon={longitude}&radius={radius}&extratags=1"
-
-        print(url)
-
-        # Make the request to the Nominatim API with a proper user-agent
-        headers = {
-            'User-Agent': 'Safari (kouroshsimpkins@gmail.com)'  # Replace with your email or contact info
-        }
-        response = requests.get(url, headers=headers)
-
-        # Check the response status
-        if response.status_code != 200:
-            print(f"Error: Received status code {response.status_code}")
-            print(response.text)
-            return
-
-        # Print raw response content for debugging
-        print(f"Raw response content: {response.text}")
-
-        # Parse the JSON response
-        try:
-            results = response.json()
-        except ValueError:
-            print("Error parsing JSON response")
-            return
-
-        # Ensure the results are in the expected format (list of dictionaries)
-        if not isinstance(results, list):
-            print("Unexpected response format")
-            return
-
-        # Extract and print the addresses
-        addresses = [result['display_name'] for result in results]
-        print(addresses)
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    # Store the random point in the database
 
 
 def generate_email(first_name, last_name, date_of_birth):
