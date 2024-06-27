@@ -214,6 +214,47 @@ def get_fingerprints(person_id):
         return jsonify({"error": f"Error loading person data: {e}"})
 
 
+@app.route('/newest_address')
+def get_newest_address():
+    conn = connect_to_db()
+
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+        SELECT a.latitude, a.longitude
+        FROM test_identity_system.addresses a
+        ORDER BY address_id DESC
+        LIMIT 1;
+        """)
+        data = cur.fetchone()
+        cur.close()
+        conn.close()
+        return jsonify(data)
+    except psycopg2.DatabaseError as e:
+        return jsonify({"error": f"Error loading address data: {e}"})
+
+
+@app.route('/newest_person_address')
+def get_newest_person_address():
+    conn = connect_to_db()
+
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+        SELECT a.latitude, a.longitude, p.first_name, p.last_name
+        FROM test_identity_system.persons p
+        INNER JOIN test_identity_system.addresses a ON p.home_address_id = a.address_id
+        ORDER BY p.person_id DESC
+        LIMIT 1;
+        """)
+        data = cur.fetchone()
+        cur.close()
+        conn.close()
+        return jsonify(data)
+    except psycopg2.DatabaseError as e:
+        return jsonify({"error": f"Error loading address data: {e}"})
+
+
 @socketio.on('connect')
 def handle_connect():
     print('Client connected')

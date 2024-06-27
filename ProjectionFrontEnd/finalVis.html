@@ -5,6 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <style>
         html, body, #map {
             width: 100%;
@@ -40,17 +41,23 @@
             { "lat": 51.49, "lng": -0.08, "popup": "Pin 3" }
         ];
 
-        customPins.forEach(function(pin) {
-            L.marker([pin.lat, pin.lng]).addTo(map)
+        // Function to add a pin to the map and focus on it
+        function addPin(pin) {
+            const marker = L.marker([pin.lat, pin.lng]).addTo(map)
                 .bindPopup(pin.popup)
                 .openPopup();
+            map.setView([pin.lat, pin.lng], 13);
+        }
+
+        customPins.forEach(function(pin) {
+            addPin(pin);
         });
 
         // Center the map on the user's location
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(function(position) {
-                var userLat = position.coords.latitude;
-                var userLng = position.coords.longitude;
+                const userLat = position.coords.latitude;
+                const userLng = position.coords.longitude;
                 map.setView([userLat, userLng], 13);
 
                 // Add a marker for the user's location
@@ -64,6 +71,30 @@
         } else {
             alert("Geolocation is not supported by your browser");
         }
+
+        // Set up WebSocket connection
+        const socket = io('http://localhost:5001');
+
+        socket.on('new_identity_generated', function(data){
+            console.log('Broadcast message received:', data);
+            // Fetch new data from the API when a broadcast is received
+            fetch('http://localhost:5001/newest_person_address')
+                .then(response => response.json())
+                .then(newPinData => {
+                    const newPin = {
+                        lat: newPinData[0],
+                        lng: newPinData[1],
+                        popup: newPinData[2] + ' ' + newPinData[3]
+                    };
+                    customPins.push(newPin);
+                    addPin(newPin);
+                })
+                .catch(error => console.error('Error fetching new pin:', error));
+        });
+
+        socket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+        };
     </script>
 </body>
 </html>
