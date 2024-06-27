@@ -9,6 +9,7 @@ from networkx.algorithms.components import connected
 import logging
 from geopy.distance import geodesic
 from geopy.geocoders import Nominatim
+import GeographyTest
 
 fake = Faker('en_GB')
 
@@ -27,13 +28,25 @@ def pick_random_address():
 
     # Generate a random point within a 2km radius of the selected point
     point = (latitude, longitude)
-    radius = 2000
-    random_point = geodesic(point, random.uniform(0, radius)).destination(bearing=random.uniform(0, 360),
-                                                                           distance=random.uniform(0, radius))
-    latitude = random_point[0]
-    longitude = random_point[1]
+    radius = 5
+
+    address = GeographyTest.get_random_residential_address(os.getenv('GEOAPIFY_API_KEY'), point, radius)
+
+    print(address)
 
     # Store the random point in the database
+    conn = connect_to_db()
+    cur = conn.cursor()
+
+    cur.execute("SET search_path = 'test_identity_system';")
+    cur.execute("""
+        INSERT INTO Addresses (house_number, street, city, post_code, country, latitude, longitude)
+        VALUES (%s, %s, %s, %s, %s, %s, %s);
+        """, (address['house_number'], address['street'], address['city'], address['post_code'], address['country'], address['latitude'], address['longitude']))
+
+    conn.commit()
+    cur.close()
+    conn.close()
 
 
 def generate_email(first_name, last_name, date_of_birth):
@@ -308,6 +321,23 @@ def generate_person():
     # Additional personal documents
     passport_id = insert_passport(person_id)
     drivers_license_id = insert_drivers_license(person_id)
+
+    pick_random_address()
+
+    # The last generated address will be the one linked to the person
+    cur = conn.cursor()
+    cur.execute("SET search_path = 'test_identity_system';")
+    cur.execute("SELECT address_id FROM addresses ORDER BY RANDOM() LIMIT 1;")
+    address_id = cur.fetchone()[0]
+    cur.execute("UPDATE Persons SET home_address_id = %s WHERE person_id = %s;", (address_id, person_id))
+    conn.commit()
+    cur.close()
+
+    cur = conn.cursor()
+    cur.execute("SET search_path = 'test_identity_system';")
+    cur.execute("SELECT * FROM Persons WHERE person_id = %s;", (person_id,))
+    person_record = cur.fetchone()
+    cur.close()
 
     # Compile all generated data into a result dictionary
     result = {
