@@ -47,10 +47,12 @@ def get_newest_person():
         cur.execute("""
         SELECT p.person_id, p.first_name, p.last_name, p.email, p.date_of_birth,
         pa.passport_number, pa.nationality, pa.date_of_issue, pa.expiration_date,
-        dr.license_number, dr.date_of_issue, dr.expiration_date, dr.categories
+        dr.license_number, dr.date_of_issue, dr.expiration_date, dr.categories,
+        a.street, a.post_code, a.house_number
         FROM test_identity_system.persons p
         LEFT JOIN test_identity_system.passports pa ON p.person_id = pa.person_id
         LEFT JOIN test_identity_system.driverslicenses dr ON p.person_id = dr.person_id
+        LEFT JOIN test_identity_system.addresses a on p.home_address_id = a.address_id
         ORDER BY person_id DESC
         LIMIT 1;
         """)

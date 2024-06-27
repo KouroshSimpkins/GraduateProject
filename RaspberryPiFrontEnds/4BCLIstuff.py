@@ -42,6 +42,7 @@ def format_person_data(data):
     Name: {data[1]} {data[2]}
     Email: {data[3]}
     Date of Birth: {data[4]}
+    Address: {data[15]} {data[13]}, {data[14]}
     Additional Info: 
         Passport Number: {data[5]}
         Country: {data[6]}
